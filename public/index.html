@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ピピトリ｜Pig Pick Trick</title>
+  <style>
+    :root{
+      --orange:#e78a18; --dark:#2b1506; --panel:rgba(37,17,5,.82); --cream:#fff2cf;
+      --purple:#5d2ee6; --yellow:#fff12d; --line:#fff4d5; --shadow:rgba(0,0,0,.38);
+      --safe-top:env(safe-area-inset-top); --safe-bottom:env(safe-area-inset-bottom);
+    }
+    *{box-sizing:border-box} html,body{height:100%;margin:0;overflow:hidden;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#120704;color:#fff}
+    button,input,select{font:inherit} button{cursor:pointer;border:0}
+    .app{position:relative;width:100vw;height:100svh;min-height:560px;overflow:hidden;background:
+      radial-gradient(circle at 57% 30%,rgba(255,231,97,.75) 0 5%,rgba(255,184,45,.75) 6% 16%,rgba(224,118,20,.95) 62%,rgba(95,37,5,1) 100%)}
+    .app::before{content:"";position:absolute;inset:-12%;background:repeating-conic-gradient(from -4deg at 58% 34%,rgba(255,255,255,.16) 0 8deg,rgba(255,255,255,0) 8deg 17deg);mix-blend-mode:soft-light;opacity:.9;pointer-events:none;animation:spin 80s linear infinite}
+    @keyframes spin{to{transform:rotate(1turn)}}
+    .topbar{position:absolute;inset:calc(10px + var(--safe-top)) 14px auto 14px;z-index:10;display:flex;align-items:flex-start;justify-content:space-between;pointer-events:none}
+    .roundBadge{pointer-events:auto;background:rgba(44,18,5,.85);border-radius:0 0 30px 30px;min-width:124px;padding:12px 18px 14px;box-shadow:0 12px 28px var(--shadow);text-align:center;transform:translateY(-12px)}
+    .roundBadge span{display:block;font-size:13px;font-weight:900;letter-spacing:.08em}.roundBadge strong{font-size:40px;line-height:.95}.roundBadge em{font-style:normal;margin:0 4px;color:#ffe58f;font-weight:900}.roundBadge small{display:block;font-size:11px;color:#ffd98e;margin-top:2px}
+    .topCenter{pointer-events:auto;display:flex;gap:10px;align-items:center;justify-content:center;flex:1}.logoTiny{height:54px;max-width:330px;object-fit:contain;filter:drop-shadow(0 8px 8px rgba(0,0,0,.35))}.roomCode{background:rgba(0,0,0,.42);border:2px solid rgba(255,255,255,.35);border-radius:18px;padding:8px 12px;font-weight:900;color:#fff1a8}
+    .topBtns{display:flex;gap:10px;pointer-events:auto}.iconBtn{width:48px;height:48px;border-radius:15px;background:rgba(43,18,5,.6);border:4px solid #fff;color:#fff;font-weight:1000;font-size:25px;box-shadow:0 8px 0 rgba(0,0,0,.16)}
+    .scoreBoard{position:absolute;left:18px;top:118px;z-index:6;width:350px;max-width:36vw;display:flex;flex-direction:column;gap:10px}
+    .playerRow{position:relative;display:grid;grid-template-columns:58px 1fr 80px;align-items:center;gap:8px;padding:7px 9px 7px 7px;border-radius:999px;background:rgba(55,23,4,.84);box-shadow:0 6px 18px rgba(0,0,0,.22);border:3px solid transparent;min-height:70px}
+    .playerRow.current{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(255,241,45,.3),0 8px 20px rgba(0,0,0,.25)}.playerRow.self{outline:3px solid rgba(255,255,255,.75);outline-offset:2px}.avatar{width:58px;height:58px;border-radius:50%;background:#eee;border:4px solid #fff;display:grid;place-items:center;overflow:hidden;font-size:28px}.avatar img{width:100%;height:100%;object-fit:cover}.pName{font-weight:1000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pStats{display:flex;gap:12px;align-items:center;margin-top:4px;color:#ffe6b0;font-weight:900}.miniCardIcon{display:inline-grid;place-items:center;min-width:30px;height:22px;border-radius:5px;background:var(--purple);border:2px solid rgba(255,255,255,.6);font-size:12px;box-shadow:inset 0 0 0 2px rgba(0,0,0,.12)}.pileScore{font-size:24px;color:#fff}.connectDot{width:10px;height:10px;border-radius:50%;background:#66ff79;box-shadow:0 0 10px #66ff79}.connectDot.off{background:#777;box-shadow:none}.speech{position:absolute;left:76px;right:10px;bottom:-21px;z-index:2;background:#fff;color:#231005;border-radius:12px;padding:4px 9px;font-size:12px;font-weight:800;box-shadow:0 8px 15px rgba(0,0,0,.2);animation:pop .25s ease-out}.speech::before{content:"";position:absolute;left:20px;top:-7px;border:8px solid transparent;border-bottom-color:#fff;border-top:0}
+    .tableArea{position:absolute;inset:98px 20px 145px 390px;z-index:3;display:grid;grid-template-rows:50px 1fr 58px;gap:8px}.playTrail{justify-self:center;align-self:start;display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.32);border:2px solid rgba(255,255,255,.28);border-radius:999px;padding:6px 12px;box-shadow:0 10px 20px rgba(0,0,0,.16)}.trailDot{display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.11);font-size:12px;font-weight:900}.trailDot.current{background:#fff12d;color:#2a1504}.trailArrow{opacity:.55;font-weight:900}.trickZone{position:relative;display:grid;place-items:center;min-height:260px}.tableGlow{position:absolute;inset:8% 6%;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.18),rgba(255,255,255,0) 60%);filter:blur(8px)}.trickSlot{position:absolute;width:112px;height:158px;display:grid;place-items:center}.trickSlot.north{top:10%;left:48%;transform:translateX(-50%) rotate(-7deg)}.trickSlot.east{right:14%;top:42%;transform:translateY(-50%) rotate(10deg)}.trickSlot.south{bottom:8%;left:48%;transform:translateX(-50%) rotate(7deg)}.trickSlot.west{left:10%;top:45%;transform:translateY(-50%) rotate(-12deg)}.trickMessage{position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);max-width:520px;text-align:center;background:rgba(0,0,0,.55);padding:12px 18px;border-radius:999px;font-weight:1000;font-size:18px;color:#fff2a8;box-shadow:0 8px 20px rgba(0,0,0,.2)}.actionPanel{display:flex;justify-content:center;gap:10px;align-items:center}.pillBtn{border-radius:999px;padding:10px 18px;background:#1b0c03;color:#fff;font-weight:1000;letter-spacing:.03em;box-shadow:0 7px 0 rgba(0,0,0,.25);border:2px solid rgba(255,255,255,.18)}.pillBtn.primary{background:#fff12d;color:#1f1103;border-color:#fff8a8}.pillBtn.ghost{background:rgba(255,255,255,.16);border-color:#fff;color:#fff}.pillBtn.danger{background:#ff3b3b;color:#fff}.pillBtn.big{font-size:18px;padding:13px 26px}.pillBtn:disabled{opacity:.45;filter:grayscale(.8);cursor:not-allowed}.handDock{position:absolute;left:0;right:0;bottom:calc(0px + var(--safe-bottom));height:172px;z-index:7;display:flex;flex-direction:column;justify-content:flex-end;pointer-events:none}.statusLine{pointer-events:auto;align-self:center;min-width:360px;max-width:84vw;text-align:center;background:rgba(0,0,0,.62);border:2px solid rgba(255,255,255,.22);border-radius:999px;padding:8px 14px;margin-bottom:5px;color:#ffe594;font-weight:1000}.playerHand{pointer-events:auto;height:136px;display:flex;align-items:flex-end;justify-content:center;padding:0 12px 14px;gap:0;overflow:visible}.card{position:relative;width:82px;height:118px;border-radius:12px;background:#fff;color:#111;border:4px solid #f8f8f8;box-shadow:0 8px 0 #c7c7c7,0 14px 22px rgba(0,0,0,.35);display:grid;grid-template-rows:auto 1fr auto;padding:8px;transition:transform .16s ease,filter .16s ease,box-shadow .16s ease;user-select:none}.card .rank{font-size:31px;line-height:.85;font-weight:1000;letter-spacing:-.06em}.card .suit{font-size:24px;align-self:center;justify-self:center}.card .suitName{font-size:10px;font-weight:900;opacity:.72}.card .mad{position:absolute;right:4px;bottom:4px;font-size:11px;background:#151515;color:#fff;border-radius:999px;padding:2px 5px}.card.joker{background:linear-gradient(145deg,#7c3cff,#3a178f);color:#fff;border-color:#e8ddff}.card.back{background:repeating-linear-gradient(45deg,#4c22d6 0 8px,#6a38ea 8px 16px);color:#fff}.card.back::after{content:"S";font-size:66px;font-family:Georgia,serif;font-weight:900;opacity:.28;place-self:center}.handCard{margin-left:-24px;transform-origin:50% 120%;cursor:pointer}.handCard:first-child{margin-left:0}.handCard.playable{filter:saturate(1.25);box-shadow:0 8px 0 #c7c7c7,0 0 0 5px rgba(255,241,45,.85),0 17px 25px rgba(0,0,0,.35)}.handCard.playable:hover{transform:translateY(-24px) rotate(0deg)!important}.handCard.selected{transform:translateY(-32px) rotate(0deg)!important;box-shadow:0 8px 0 #c7c7c7,0 0 0 6px #fff12d,0 20px 24px rgba(0,0,0,.35)}.smallCard{width:70px;height:100px}.trickCard{animation:drop .25s ease-out}.modal,.overlay{position:absolute;inset:0;z-index:30;display:grid;place-items:center;background:rgba(0,0,0,.58);backdrop-filter:blur(6px)}.hidden{display:none!important}.modalCard{width:min(960px,92vw);max-height:90svh;overflow:auto;background:linear-gradient(180deg,rgba(70,29,8,.96),rgba(31,12,3,.96));border:4px solid rgba(255,255,255,.28);border-radius:28px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.5)}.setupLogo{display:block;max-width:560px;width:80%;height:auto;margin:0 auto 8px;filter:drop-shadow(0 10px 11px rgba(0,0,0,.35))}.modalTitle{display:flex;align-items:center;justify-content:space-between;gap:14px}.eyebrow{font-size:12px;font-weight:1000;color:#fff12d;margin:0;letter-spacing:.14em}.modal h1,.modal h2{margin:.1em 0;font-size:30px}.leadText{margin:8px 0 15px;color:#ffe6ba;font-weight:700;line-height:1.55}.settingsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.settingsGrid label{display:flex;flex-direction:column;gap:5px;background:rgba(255,255,255,.08);padding:10px;border-radius:14px;font-weight:900;color:#ffe8be}.settingsGrid input,.settingsGrid select,.joinBar input{width:100%;border-radius:10px;border:2px solid rgba(255,255,255,.3);padding:9px;background:#fff;color:#241101;font-weight:900}.buttonRow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;margin-top:14px}.joinBar{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin:12px 0;padding:12px;background:rgba(0,0,0,.22);border-radius:14px}.lobbyList{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}.lobbySeat{background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.18);border-radius:16px;padding:12px;text-align:center}.lobbySeat .avatar{margin:auto}.panel{position:absolute;right:20px;top:92px;width:min(420px,44vw);max-height:calc(100svh - 170px);z-index:20;background:rgba(22,8,1,.92);border:3px solid rgba(255,255,255,.22);border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}.panelHead{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:rgba(255,255,255,.08)}.panelBody{padding:12px;overflow:auto}.logList{margin:0;padding-left:20px;color:#ffe1ac;font-size:13px;line-height:1.5}.summaryGrid{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:12px}.summaryGrid div{background:rgba(255,255,255,.08);border-radius:10px;padding:8px}.pickBox{width:min(900px,92vw);background:linear-gradient(180deg,#3b1706,#160702);border:4px solid rgba(255,255,255,.35);border-radius:26px;padding:18px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.55)}.pickCards{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:14px 0}.pickCard{cursor:pointer}.candidateSelected{box-shadow:0 8px 0 #c7c7c7,0 0 0 6px #fff12d,0 14px 20px rgba(0,0,0,.35)!important;transform:translateY(-12px)}.resultTable{width:100%;border-collapse:separate;border-spacing:0 8px;margin-top:10px}.resultTable th,.resultTable td{background:rgba(255,255,255,.09);padding:9px;text-align:center}.resultTable th:first-child,.resultTable td:first-child{border-radius:10px 0 0 10px}.resultTable th:last-child,.resultTable td:last-child{border-radius:0 10px 10px 0}.winnerRow td{background:rgba(255,241,45,.22)}.shootOverlay{position:absolute;inset:0;z-index:50;display:grid;place-items:center;background:radial-gradient(circle,rgba(255,241,45,.35),rgba(255,64,64,.25),rgba(0,0,0,.82));animation:shake .18s linear 16}.shootCard,.revealCard{background:rgba(0,0,0,.68);border:4px solid #fff12d;border-radius:28px;padding:28px;text-align:center;box-shadow:0 0 50px #fff12d}.shootCard h2{font-size:48px;margin:0;color:#fff12d;text-shadow:0 4px 0 #000}.revealOverlay{position:absolute;inset:0;z-index:48;display:grid;place-items:center;background:rgba(80,0,50,.48);backdrop-filter:blur(3px)}.revealCard h2{margin:0;color:#fff12d}.revealCard .card{margin:16px auto;transform:scale(1.25)}
+    @keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}} @keyframes drop{from{transform:translateY(-50px) scale(.85);opacity:0}to{opacity:1}} @keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(5px,-3px)}50%{transform:translate(-4px,3px)}75%{transform:translate(3px,4px)}}
+    @media(max-width:900px){.app{min-height:460px}.scoreBoard{left:8px;top:84px;width:260px;max-width:40vw;gap:6px}.playerRow{grid-template-columns:44px 1fr 46px;min-height:54px;padding:4px}.avatar{width:44px;height:44px}.pName{font-size:12px}.pStats{font-size:12px;gap:6px}.pileScore{font-size:17px}.tableArea{inset:76px 8px 124px 280px;grid-template-rows:42px 1fr 46px}.logoTiny{height:38px;max-width:210px}.roundBadge{min-width:88px;padding:8px 10px 10px}.roundBadge strong{font-size:30px}.iconBtn{width:42px;height:42px}.card{width:63px;height:94px;border-width:3px;border-radius:10px;padding:6px}.card .rank{font-size:24px}.card .suit{font-size:19px}.handDock{height:132px}.playerHand{height:104px}.handCard{margin-left:-20px}.settingsGrid{grid-template-columns:repeat(2,1fr)}.joinBar{grid-template-columns:1fr}.lobbyList{grid-template-columns:repeat(2,1fr)}.panel{right:8px;width:calc(100vw - 16px);max-width:none;top:74px}.trickMessage{font-size:14px}.trickSlot{width:72px;height:106px}.statusLine{min-width:240px;font-size:12px}}
+    @media(max-width:640px){.scoreBoard{max-width:46vw;width:210px}.tableArea{left:220px}.settingsGrid{grid-template-columns:1fr}.topCenter{display:none}.playerRow{grid-template-columns:38px 1fr 38px}.avatar{width:38px;height:38px}.speech{display:none}.miniCardIcon{min-width:22px}.pStats{display:none}.card{width:56px;height:84px}.handCard{margin-left:-23px}.trickSlot.west{left:4%}.trickSlot.east{right:4%}}
+  
+    @media(max-height:520px){.app{min-height:0;height:100svh}.scoreBoard{top:68px;left:6px;width:250px;max-width:42vw;gap:5px}.playerRow{grid-template-columns:40px 1fr 42px;min-height:48px;padding:4px}.avatar{width:40px;height:40px;border-width:3px}.pName{font-size:12px}.pStats{font-size:11px;gap:5px;margin-top:1px}.pileScore{font-size:17px}.speech{left:52px;bottom:-18px;font-size:10px;padding:3px 7px}.tableArea{inset:62px 6px 104px 245px;grid-template-rows:34px 1fr 38px;gap:4px}.playTrail{padding:3px 8px;gap:4px;max-width:56vw;overflow:hidden}.trailDot{font-size:10px;padding:2px 5px}.roundBadge{min-width:72px;padding:7px 9px 9px}.roundBadge span{font-size:10px}.roundBadge strong{font-size:26px}.logoTiny{height:30px;max-width:160px}.roomCode{font-size:11px;padding:5px 8px}.iconBtn{width:36px;height:36px;border-width:3px;font-size:18px}.trickZone{min-height:140px}.trickSlot{width:60px;height:86px}.trickSlot.north{top:5%}.trickSlot.south{bottom:2%}.trickMessage{font-size:12px;padding:7px 10px;max-width:46vw}.handDock{height:102px}.statusLine{min-width:210px;font-size:11px;padding:5px 10px;margin-bottom:1px}.playerHand{height:78px;padding:0 8px 5px}.card{width:52px;height:78px;border-width:2px;border-radius:8px;padding:4px}.card .rank{font-size:20px}.card .suit{font-size:16px}.card .suitName{font-size:8px}.card .mad{font-size:8px}.handCard{margin-left:-17px}.handCard.playable:hover{transform:translateY(-12px) rotate(0deg)!important}.smallCard{width:48px;height:72px}.settingsGrid{grid-template-columns:repeat(2,1fr);gap:7px}.settingsGrid label{padding:7px;font-size:12px}.joinBar{padding:7px;gap:6px}.lobbyList{grid-template-columns:repeat(2,1fr);gap:6px;max-height:30vh;overflow:auto}.lobbySeat{padding:7px}.modalCard{max-height:96svh;padding:12px;border-radius:20px}.modal h1,.modal h2{font-size:22px}.leadText{font-size:12px;margin:4px 0 8px}.setupLogo{max-width:320px}.pickBox{max-height:96svh;overflow:auto;padding:12px;border-radius:20px}.pickCards{gap:8px;margin:8px 0}.panel{top:58px;right:6px;width:calc(100vw - 12px);max-height:calc(100svh - 66px)}}
+    @media(prefers-reduced-motion:reduce){.app::before,.trickCard,.shootOverlay{animation:none!important}.card{transition:none!important}}
+
+  </style>
+</head>
+<body>
+<div id="app" class="app">
+  <header class="topbar">
+    <div class="roundBadge"><span>ROUND</span><strong id="roundNo">-</strong><em>/</em><strong id="roundMax">-</strong><small id="phaseMini">LOBBY</small></div>
+    <div class="topCenter"><img src="/pig_pick_trick_logo.png" class="logoTiny" alt="Pig Pick Trick"><span id="roomCode" class="roomCode">未接続</span></div>
+    <div class="topBtns"><button id="helpBtn" class="iconBtn">?</button><button id="menuBtn" class="iconBtn">☰</button></div>
+  </header>
+
+  <aside id="scoreBoard" class="scoreBoard"></aside>
+  <main class="tableArea">
+    <div id="playTrail" class="playTrail"></div>
+    <section id="trickZone" class="trickZone">
+      <div class="tableGlow"></div>
+      <div id="slot0" class="trickSlot south"></div><div id="slot1" class="trickSlot west"></div><div id="slot2" class="trickSlot north"></div><div id="slot3" class="trickSlot east"></div>
+      <div id="trickMessage" class="trickMessage">接続中…</div>
+    </section>
+    <section class="actionPanel"><button id="continueBtn" class="pillBtn primary hidden">次のラウンドへ</button><button id="showBtn" class="pillBtn">SHOW</button></section>
+  </main>
+  <section class="handDock"><div id="statusLine" class="statusLine">ピピトリへようこそ</div><div id="playerHand" class="playerHand"></div></section>
+
+  <section id="setupModal" class="modal"><div class="modalCard">
+    <img src="/pig_pick_trick_logo.png" class="setupLogo" alt="Pig Pick Trick">
+    <p class="leadText">添付画像風の卓面UIをベースにした、Render対応のオンライン対戦版です。ホストはCPUを追加して1人でも遊べます。</p>
+    <div class="joinBar"><input id="playerName" placeholder="名前" value="Oink"><input id="joinCode" placeholder="部屋コード"><button id="joinBtn" class="pillBtn">入室</button></div>
+    <div class="settingsGrid">
+      <label>ラウンド数<select id="setRounds"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></label>
+      <label>マッド・ピッグ<select id="setMadPig"><option value="on" selected>あり</option><option value="off">なし</option></select></label>
+      <label>シュート・ザ・ピッグ<select id="setShoot"><option value="off" selected>OFF</option><option value="on">ON</option></select></label>
+      <label>ババブタ失点<input id="setJokerPenalty" type="number" min="0" max="999" value="20"></label>
+      <label>ババブタ失点タイミング<select id="setJokerTiming"><option value="perRound" selected>ラウンド毎</option><option value="gameEnd">ゲームの最後</option></select></label>
+      <label>残り手札失点<select id="setPenaltyMode"><option value="flat3" selected>1枚ごとに-3点</option><option value="faceValue">数字分だけ失点</option><option value="spadeSuit">通常-1 / どろんこ-3</option></select></label>
+      <label>ピック対象数<select id="setPickLimit"><option value="0">絞らない</option><option value="1">1枚</option><option value="2" selected>2枚</option><option value="3">3枚</option><option value="4">4枚</option><option value="5">5枚</option><option value="6">6枚</option><option value="7">7枚</option><option value="8">8枚</option><option value="9">9枚</option><option value="10">10枚</option><option value="11">11枚</option><option value="12">12枚</option><option value="13">13枚</option></select></label>
+      <label>開始時3枚パス<select id="setPass3"><option value="off" selected>なし</option><option value="on">あり</option></select></label>
+      <label>開始時ペア捨て<select id="setInitialPair"><option value="off" selected>なし</option><option value="on">あり</option></select></label>
+    </div>
+    <div class="buttonRow"><button id="createBtn" class="pillBtn primary big">部屋を作成</button></div>
+    <div id="lobbyBlock" class="hidden"><h2>ロビー</h2><p id="lobbyInfo" class="leadText"></p><div id="lobbyList" class="lobbyList"></div><div class="buttonRow"><button id="addCpuBtn" class="pillBtn">CPU追加</button><button id="startBtn" class="pillBtn primary big">ゲーム開始</button></div></div>
+  </div></section>
+
+  <section id="pickOverlay" class="overlay hidden"><div class="pickBox"><h2 id="pickTitle">ピック</h2><p id="pickInfo"></p><div id="pickCards" class="pickCards"></div><div class="buttonRow"><button id="confirmPickTargetsBtn" class="pillBtn primary hidden">候補を決定</button><button id="skipPairBtn" class="pillBtn ghost hidden">スキップ</button></div></div></section>
+  <section id="resultOverlay" class="overlay hidden"><div class="pickBox"><h2 id="resultTitle">結果</h2><div id="resultBody"></div><div class="buttonRow"><button id="closeResultBtn" class="pillBtn primary">OK</button></div></div></section>
+  <section id="logPanel" class="panel hidden"><div class="panelHead"><strong>ログ / ルールサマリ</strong><button id="closeLogBtn" class="pillBtn ghost">閉じる</button></div><div class="panelBody"><div class="summaryGrid"><div><b>スート</b>：🍎りんご / 💧どろんこ / 🥬キャベツ / 🌽トウモロコシ</div><div><b>勝者</b>：リードスート最大</div><div><b>最弱</b>：非リード最小。全員フォローなら場の最小。同値は後出し。</div><div><b>公開ピック</b>：勝者が最弱者の袋から裏向きで1枚。結果は全員に公開。</div></div><ol id="logList" class="logList"></ol></div></section>
+  <section id="helpModal" class="modal hidden"><div class="modalCard"><div class="modalTitle"><h2>かんたんルール</h2><button id="closeHelpBtn" class="iconBtn">×</button></div><p class="leadText">リードスートを持っているなら必ず出すマストフォロー。勝者は場の4枚をごちそう山へ。さらに最弱者から公開ピック。ババブタとマッド・ピッグをどう処理するかが勝負です。</p><div class="summaryGrid"><div>💧11はマッド・ピッグ。ON時は失点対象。</div><div>🐷ババブタは場に出せず、手札に残ると設定値ぶん失点。</div><div>シュート・ザ・ピッグON時、ババブタとマッド・ピッグを同時に持つと大逆転演出。</div></div></div></section>
+  <section id="shootOverlay" class="shootOverlay hidden"><div class="shootCard"><h2>SHOOT THE PIG!</h2><h3>MOON SHOT COMBO</h3><p id="shootText"></p></div></section>
+  <section id="revealOverlay" class="revealOverlay hidden"><div class="revealCard"><h2>PUBLIC PICK REVEAL</h2><p id="revealText"></p><div id="revealCard"></div></div></section>
+</div>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+let ws, state=null, lastShootId='', lastRevealId='', selectedIds=new Set(), lastHandKey='', lastPickKey='';
+const SESSION_KEY='pipiToriSessionV2';
+function connect(){
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+  ws.onopen = () => {
+    $('trickMessage').textContent='接続しました。部屋を作成または入室してください。';
+    const saved = loadSession();
+    if(saved?.roomCode && saved?.playerId && saved?.sessionToken) send('resumeRoom', saved);
+  };
+  ws.onmessage = ev => {
+    const msg=JSON.parse(ev.data);
+    if(msg.type==='state'||msg.type==='created'||msg.type==='joined'||msg.type==='resumed'){
+      if(msg.session) saveSession(msg.session);
+      state=msg.state; render();
+    }
+    if(msg.type==='resumeFailed'){ clearSession(); }
+    if(msg.type==='error') alert(msg.message);
+  };
+  ws.onclose = () => { $('trickMessage').textContent='接続が切れました。再接続します…'; setTimeout(connect,1000); };
+}
+function send(type, payload={}){ if(ws && ws.readyState===1) ws.send(JSON.stringify({type,...payload})); }
+function loadSession(){ try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null');}catch{return null;} }
+function saveSession(sess){ try{localStorage.setItem(SESSION_KEY, JSON.stringify(sess));}catch{} }
+function clearSession(){ try{localStorage.removeItem(SESSION_KEY);}catch{} }
+function optionsFromForm(){ return { totalRounds:+$('setRounds').value, madPigEnabled:$('setMadPig').value==='on', shootPigEnabled:$('setShoot').value==='on', jokerPenalty:+$('setJokerPenalty').value, jokerPenaltyTiming:$('setJokerTiming').value, penaltyMode:$('setPenaltyMode').value, pickTargetCount:+$('setPickLimit').value, pass3Enabled:$('setPass3').value==='on', initialPairEnabled:$('setInitialPair').value==='on' }; }
+function cardEl(card, cls='', onClick=null){
+  const div=document.createElement('div'); div.className=`card ${cls} ${card?.joker?'joker':''} ${card?.mad?'madPig':''}`; if(card?.color) div.style.borderColor=card.color;
+  if(!card){ div.classList.add('back'); return div; }
+  if(card.back){ div.className=`card back ${cls}`; if(onClick) div.onclick=onClick; return div; }
+  div.innerHTML = card.joker ? `<div class="rank">🐷</div><div class="suit">BABA</div><div class="suitName">ババブタ</div>` : `<div class="rank">${card.rank}</div><div class="suit">${card.emoji}</div><div class="suitName">${card.suitName}</div>${card.mad?'<span class="mad">MAD</span>':''}`;
+  if(onClick) div.onclick=onClick;
+  return div;
+}
+function render(){ if(!state) return;
+  $('roundNo').textContent = state.round || '-'; $('roundMax').textContent = state.totalRounds || '-'; $('phaseMini').textContent = String(state.phase||'').toUpperCase(); $('roomCode').textContent = state.code ? `ROOM ${state.code}` : '未接続';
+  $('setupModal').classList.toggle('hidden', state.phase !== 'lobby');
+  renderLobby(); renderPlayers(); renderTrail(); renderTrick(); renderHand(); renderLog(); renderPick(); renderRoundResult(); renderEffects();
+  $('continueBtn').classList.toggle('hidden', !(state.phase==='roundEnd' && state.players[state.selfPid]?.host));
+  $('statusLine').textContent = statusText();
+}
+function renderLobby(){
+  if(!state || state.phase!=='lobby') return;
+  $('lobbyBlock').classList.remove('hidden'); $('lobbyInfo').textContent=`部屋コード：${state.code}　現在 ${state.players.length}/4 人。4人未満ならCPUを追加できます。`;
+  $('lobbyList').innerHTML=''; state.players.forEach(p=>{ const d=document.createElement('div'); d.className='lobbySeat'; d.innerHTML=`${avatarHtml(p)}<b>${escapeHtml(p.name)}</b><br>${p.cpu?'CPU':'人間'} ${p.host?' / ホスト':''}`; $('lobbyList').appendChild(d); });
+}
+function avatarHtml(p){ const src=String(p.imagePath||''); return `<div class="avatar">${src?`<img src="${escapeHtml(src)}" alt="">`:escapeHtml(p.avatar||'🙂')}</div>`; }
+function renderPlayers(){
+  $('scoreBoard').innerHTML=''; if(!state?.players) return;
+  state.players.forEach(p=>{ const row=document.createElement('div'); row.className=`playerRow ${p.pid===state.current?'current':''} ${p.pid===state.selfPid?'self':''}`; row.innerHTML=`${avatarHtml(p)}<div><div class="pName">${escapeHtml(p.name)}</div><div class="pStats"><span class="miniCardIcon">S</span><span>${p.handCount}</span><span>|</span><span>山 ${p.pileCount}</span><span>浄 ${p.pairCount}</span></div></div><div style="display:grid;place-items:center"><span class="pileScore">${p.final?p.final.total:p.pileCount}</span><span class="connectDot ${p.connected?'':'off'}"></span></div>${p.speech?`<div class="speech">${escapeHtml(p.speech)}</div>`:''}`; $('scoreBoard').appendChild(row); });
+}
+function renderTrail(){
+  $('playTrail').innerHTML=''; if(!state?.players) return;
+  state.players.forEach((p,i)=>{ const d=document.createElement('div'); d.className=`trailDot ${i===state.current?'current':''}`; d.textContent=`${i+1} ${p.name}`; $('playTrail').appendChild(d); if(i<state.players.length-1){ const a=document.createElement('span'); a.className='trailArrow'; a.textContent='›'; $('playTrail').appendChild(a); } });
+}
+function seatClassFor(pid){ const self=state.selfPid>=0?state.selfPid:0; const rel=(pid-self+4)%4; return ['south','west','north','east'][rel]; }
+function renderTrick(){
+  for(let i=0;i<4;i++) $('slot'+i).innerHTML='';
+  (state.trick||[]).forEach(t=>{ const rel=(t.pid-(state.selfPid>=0?state.selfPid:0)+4)%4; const slot=$('slot'+rel); slot.innerHTML=''; slot.appendChild(cardEl(t.card,'trickCard smallCard')); });
+  $('trickMessage').textContent = state.trickReview ? state.trickReview.text : (state.message || '');
+}
+function renderHand(){
+  const hand=$('playerHand');
+  const selectedKey=[...selectedIds].sort().join(',');
+  const key=JSON.stringify({phase:state?.phase,self:state?.selfPid,hand:(state?.hand||[]).map(c=>c.id),playable:state?.playableIds||[],selected:selectedKey});
+  if(key===lastHandKey) return;
+  lastHandKey=key;
+  hand.innerHTML=''; if(!state?.hand) return;
+  const playable = new Set(state.playableIds || []); const n=state.hand.length;
+  state.hand.forEach((c,i)=>{ const cls=`handCard ${playable.has(c.id)?'playable':''} ${selectedIds.has(c.id)?'selected':''}`; const el=cardEl(c,cls,()=>{
+    if(state.phase==='playing' && playable.has(c.id)){ send('playCard',{cardId:c.id}); return; }
+    if(state.phase==='passing' && state.passInfo?.required && state.passInfo.passableIds.includes(c.id)){ toggleSelect(c.id,3); lastHandKey=''; lastPickKey=''; renderHand(); renderPick(); }
+  }); const rot=(i-(n-1)/2)*3.5; const y=Math.abs(i-(n-1)/2)*2; el.style.transform=`rotate(${rot}deg) translateY(${y}px)`; hand.appendChild(el); });
+}
+function renderPick(){
+  const pp=state.pendingPick, overlay=$('pickOverlay'), cards=$('pickCards');
+  const selectedKey=[...selectedIds].sort().join(',');
+  const pickKey=JSON.stringify({phase:state?.phase,pp,pass:state?.passInfo,init:state?.initialPairInfo,hand:(state?.hand||[]).map(c=>c.id),selected:selectedKey,reveal:lastRevealId});
+  if(pickKey===lastPickKey) return;
+  lastPickKey=pickKey;
+  cards.innerHTML=''; $('confirmPickTargetsBtn').classList.add('hidden'); $('skipPairBtn').classList.add('hidden');
+  if(state.phase==='passing' && state.passInfo?.required){ overlay.classList.remove('hidden'); $('pickTitle').textContent='開始時3枚パス'; $('pickInfo').textContent='ババブタ以外から3枚選び、次プレイヤーへ渡します。'; state.hand.filter(c=>state.passInfo.passableIds.includes(c.id)).forEach(c=>{ const el=cardEl(c,`pickCard ${selectedIds.has(c.id)?'candidateSelected':''}`,()=>{toggleSelect(c.id,3); renderPick(); renderHand();}); cards.appendChild(el); }); $('confirmPickTargetsBtn').classList.remove('hidden'); $('confirmPickTargetsBtn').textContent=`3枚を渡す（${selectedIds.size}/3）`; $('confirmPickTargetsBtn').disabled=selectedIds.size!==3; $('confirmPickTargetsBtn').onclick=()=>{send('passCards',{cardIds:[...selectedIds]}); selectedIds.clear();}; return;
+  }
+  if(state.phase==='initialPair' && state.initialPairInfo?.required){ overlay.classList.remove('hidden'); $('pickTitle').textContent='開始時ペア捨て'; $('pickInfo').textContent='同じ数字2枚を選んで浄化できます。終える場合はスキップ。'; state.hand.forEach(c=>{ if(c.joker) return; const el=cardEl(c,`pickCard ${selectedIds.has(c.id)?'candidateSelected':''}`,()=>{toggleSelect(c.id,2); renderPick();}); cards.appendChild(el); }); $('confirmPickTargetsBtn').classList.remove('hidden'); $('confirmPickTargetsBtn').textContent='この2枚を浄化'; $('confirmPickTargetsBtn').disabled=selectedIds.size!==2; $('confirmPickTargetsBtn').onclick=()=>{send('initialPair',{cardIds:[...selectedIds]}); selectedIds.clear();}; $('skipPairBtn').classList.remove('hidden'); $('skipPairBtn').onclick=()=>{selectedIds.clear(); send('initialPair',{skip:true});}; return;
+  }
+  if(!pp){ overlay.classList.add('hidden'); return; }
+  overlay.classList.remove('hidden');
+  if(pp.mode==='chooseTargets'){
+    $('pickTitle').textContent='ピック候補を選ぶ'; $('pickInfo').textContent=`${pp.targetCount}枚を候補にして、勝者に1枚引かせます。`; pp.hand.forEach(c=>{ const el=cardEl(c,`pickCard ${selectedIds.has(c.id)?'candidateSelected':''}`,()=>{toggleSelect(c.id,pp.targetCount); renderPick();}); cards.appendChild(el); }); $('confirmPickTargetsBtn').classList.remove('hidden'); $('confirmPickTargetsBtn').textContent=`候補を決定（${selectedIds.size}/${pp.targetCount}）`; $('confirmPickTargetsBtn').disabled=selectedIds.size!==pp.targetCount; $('confirmPickTargetsBtn').onclick=()=>{send('pickTargets',{cardIds:[...selectedIds]}); selectedIds.clear();}; return;
+  }
+  if(pp.mode==='pick'){
+    $('pickTitle').textContent='公開ピック'; $('pickInfo').textContent=`${pp.weakestName} の袋から裏向きで1枚選びます。中身は全員に公開されます。`; (pp.backs||[]).forEach(b=>cards.appendChild(cardEl({back:true},'pickCard',()=>send('doPick',{index:b.index})))); return;
+  }
+  if(pp.mode==='pairChoice'){
+    $('pickTitle').textContent='ペア浄化チャンス'; $('pickInfo').textContent=`ピックした ${pp.drawn.label} と同じ数字を1枚選ぶと、2枚まとめて浄化できます。`; cards.appendChild(cardEl(pp.drawn,'pickCard')); pp.pairOptions.forEach(c=>cards.appendChild(cardEl(c,'pickCard',()=>send('choosePair',{cardId:c.id})))); $('skipPairBtn').classList.remove('hidden'); $('skipPairBtn').onclick=()=>send('choosePair',{skip:true}); return;
+  }
+  if(pp.mode==='result'){ $('pickTitle').textContent='ピック結果'; $('pickInfo').textContent=pp.result.text; cards.appendChild(cardEl(pp.result.drawn,'pickCard')); return; }
+  $('pickTitle').textContent='待機中'; $('pickInfo').textContent = pp.mode==='waitTargets' ? `${pp.weakestName} が候補を選んでいます。` : `${pp.winnerName} がピックしています。`; for(let i=0;i<(pp.count||pp.targetCount||2);i++) cards.appendChild(cardEl({back:true},'pickCard'));
+}
+function toggleSelect(id, max){ if(selectedIds.has(id)) selectedIds.delete(id); else { if(selectedIds.size>=max) selectedIds.delete([...selectedIds][0]); selectedIds.add(id); } lastHandKey=''; lastPickKey=''; }
+function renderRoundResult(){
+  const show = state.phase==='roundEnd' || state.phase==='finished'; $('resultOverlay').classList.toggle('hidden', !show); if(!show) return;
+  $('resultTitle').textContent = state.phase==='finished' ? '最終結果' : `ラウンド${state.round}結果`;
+  const rows = state.phase==='finished' ? state.finalScores?.rows : state.roundSnapshot?.rows; const winners = state.finalScores?.winners || [];
+  let html=''; if(state.roundSnapshot) html += `<p>${escapeHtml(state.roundSnapshot.reasonText||'')}</p>`; if(winners.length) html+=`<h3>勝者：${winners.map(escapeHtml).join('、')}</h3>`;
+  html += '<table class="resultTable"><tr><th>名前</th><th>山</th><th>手札失点</th><th>マッド</th><th>ババ</th><th>シュート</th><th>合計</th></tr>';
+  (rows||[]).forEach(r=>{ const win=winners.includes(r.name); html += `<tr class="${win?'winnerRow':''}"><td>${escapeHtml(r.name)}</td><td>+${r.pile ?? r.pileScore ?? 0}</td><td>-${r.handPenalty||0}</td><td>-${r.madPigPenalty||0}</td><td>-${r.jokerPenalty ?? r.jokerPenaltyTotal ?? 0}</td><td>-${r.shootPigPenalty||0}</td><td><b>${r.total}</b></td></tr>`; }); html+='</table>'; if(state.phase==='roundEnd') html+='<p>ホストが「次のラウンドへ」を押すと続行します。</p>';
+  $('resultBody').innerHTML=html;
+}
+function renderEffects(){
+  const shoot=state.shootEvent;
+  if(shoot && shoot.id!==lastShootId){
+    lastShootId=shoot.id;
+    $('shootText').textContent=`${shoot.shooterName} がババブタ＋マッド・ピッグを抱えた！本人0点、他全員-10点！`;
+    $('shootOverlay').classList.remove('hidden');
+    const id=shoot.id;
+    setTimeout(()=>{ if(lastShootId===id) $('shootOverlay').classList.add('hidden'); },5200);
+  }
+  const rv=state.lastPickReveal;
+  if(rv && rv.id!==lastRevealId){
+    lastRevealId=rv.id;
+    $('pickOverlay').classList.add('hidden');
+    $('revealText').textContent=`${rv.winnerName} が ${rv.weakestName} から引いたカード`;
+    $('revealCard').innerHTML='';
+    $('revealCard').appendChild(cardEl(rv.drawn,'pickCard'));
+    $('revealOverlay').classList.remove('hidden');
+    const id=rv.id;
+    setTimeout(()=>{ if(lastRevealId===id){ $('revealOverlay').classList.add('hidden'); lastPickKey=''; renderPick(); } },rv.drawn?.joker?4300:2200);
+  }
+}
+function renderLog(){ $('logList').innerHTML=''; (state?.log||[]).slice().reverse().forEach(l=>{ const li=document.createElement('li'); li.textContent=l.text; $('logList').appendChild(li); }); }
+function statusText(){ if(!state) return '接続中…'; if(state.phase==='lobby') return `部屋 ${state.code}：ロビー`; if(state.trickReview) return state.trickReview.text; if(state.pendingPick) return 'ピック処理中'; if(state.current===state.selfPid) return 'あなたの手番です。黄色枠のカードを出せます。'; return state.message || ''; }
+function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+$('createBtn').onclick=()=>send('createRoom',{name:$('playerName').value, options:optionsFromForm()});
+$('joinBtn').onclick=()=>send('joinRoom',{name:$('playerName').value, code:$('joinCode').value});
+$('addCpuBtn').onclick=()=>send('addCpu'); $('startBtn').onclick=()=>send('startGame'); $('continueBtn').onclick=()=>send('continueRound');
+$('menuBtn').onclick=()=>$('logPanel').classList.toggle('hidden'); $('showBtn').onclick=()=>$('logPanel').classList.toggle('hidden'); $('closeLogBtn').onclick=()=>$('logPanel').classList.add('hidden');
+$('helpBtn').onclick=()=>$('helpModal').classList.remove('hidden'); $('closeHelpBtn').onclick=()=>$('helpModal').classList.add('hidden'); $('closeResultBtn').onclick=()=>$('resultOverlay').classList.add('hidden');
+$('setMadPig').onchange=()=>{ if($('setMadPig').value==='off') $('setShoot').value='off'; };
+connect();
+</script>
+</body>
+</html>

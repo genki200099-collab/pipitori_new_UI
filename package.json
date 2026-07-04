@@ -1,0 +1,15 @@
+{
+  "name": "pipi-tori-online-render",
+  "version": "1.0.0",
+  "description": "Pig Pick Trick online browser game for Render",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
