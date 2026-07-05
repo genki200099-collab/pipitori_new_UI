@@ -50,3 +50,5 @@
 ## 構文チェック
 - `node --check server.js` OK
 - `index.html` の `<script>` 抽出後 `node --check` OK
+
+- 2026-07-05: 裏向きカードの共通デザインを変更。紫の S デザインを廃止し、赤系ストライプ + 🐽 アイコンへ統一。公開ピック待機・候補表示など、`cardEl({back:true})` を使う全箇所へ一括反映。

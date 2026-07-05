@@ -331,7 +331,7 @@ function startGame(room){
   room.removedCard = removed;
   for(let i=0; i<52; i++) room.players[i%4].hand.push(dealDeck[i]);
   for(const p of room.players) sortHand(p.hand);
-  room.round = 1; room.trickNo = 1; room.lead = Math.floor(Math.random()*4); room.current = room.lead; room.leadSuit = null; room.trick=[]; room.pendingPick=null; room.trickReview=null; room.roundSnapshot=null; room.finalScores=null; room.shootPigRoundResults={}; room.endAfterTrickPid=null;
+  room.round = 1; room.trickNo = 1; room.lead = Math.floor(Math.random()*4); room.current = room.lead; room.leadSuit = null; room.trick=[]; room.pendingPick=null; room.trickReview=null; room.roundSnapshot=null; room.finalScores=null; room.shootPigRoundResults={}; room.shootEvent=null; room.lastPickReveal=null; room.endAfterTrickPid=null; room.nextLead=null;
   log(room, `通常カードから1枚を抜き、13枚ずつ配りました。抜いたカードは秘密です。`);
   log(room, `最初のリードは ${room.players[room.lead].name} です。`);
   cpuOpeningLines(room);
@@ -502,6 +502,15 @@ function submitPickTargets(room, pid, ids){
   const lp = room.players[pp.weakestPid], wp = room.players[pp.winnerPid];
   const unique = [...new Set((ids||[]).map(String))];
   const needed = Math.min(pp.targetCount, lp.hand.length);
+  if(needed <= 0){
+    pp.targetCandidateIds = [];
+    pp.pickOrderIds = [];
+    pp.targetSelectionDone = true;
+    pp.readyAt = Date.now();
+    log(room, '⚠️ ピック候補が0枚のため、ピックをスキップします。');
+    finishAfterPick(room, pp.winnerPid);
+    return;
+  }
   const handIds = new Set(lp.hand.map(c=>c.id));
   if(unique.length !== needed || !unique.every(id=>handIds.has(id))){ room.message=`ピック候補を${needed}枚選んでください。`; broadcast(room); return; }
   pp.targetCandidateIds = shuffleIds(unique); pp.pickOrderIds = pp.targetCandidateIds.slice(); pp.targetSelectionDone = true; pp.readyAt = Date.now()+900;
@@ -536,8 +545,24 @@ function doPick(room, pid, index){
   if(Date.now() < (pp.readyAt || 0) - 120) return;
   const wp = room.players[pp.winnerPid], lp = room.players[pp.weakestPid];
   const candidates = pickCandidateCards(room, pp);
-  const card = candidates[clamp(index,0,candidates.length-1)]; if(!card) return;
-  const idx = lp.hand.findIndex(c=>c.id===card.id); if(idx<0) return;
+  if(!candidates.length){
+    log(room, '⚠️ ピック候補が空になったため、ピックをスキップして進行します。');
+    room.message = 'ピック候補がなくなったため、ピックをスキップして次へ進みます。';
+    finishAfterPick(room, pp.winnerPid);
+    return;
+  }
+  const card = candidates[clamp(index,0,candidates.length-1)];
+  if(!card){
+    log(room, '⚠️ ピック対象カードを取得できなかったため、ピックをスキップして進行します。');
+    finishAfterPick(room, pp.winnerPid);
+    return;
+  }
+  const idx = lp.hand.findIndex(c=>c.id===card.id);
+  if(idx<0){
+    log(room, '⚠️ ピック対象カードが手札から見つからなかったため、ピックをスキップして進行します。');
+    finishAfterPick(room, pp.winnerPid);
+    return;
+  }
   const drawn = lp.hand.splice(idx,1)[0]; wp.hand.push(drawn); sortHand(wp.hand); sortHand(lp.hand);
   const text = drawn.joker ? `${wp.name} はババブタを引いた！` : `${wp.name} は ${cardText(drawn, room)} を公開ピックした。`;
   log(room, `🐽 ${text}`);
@@ -702,7 +727,9 @@ function score(room){
 }
 function endRound(room, reasonPid, reasonText){
   clearGameplayTimers(room);
-  room.pendingPick=null; room.trickReview=null; room.roundSnapshot = makeRoundSnapshot(room, reasonPid, reasonText);
+  room.pendingPick=null; room.trickReview=null;
+  room.trick=[]; room.leadSuit=null; room.current=null;
+  room.roundSnapshot = makeRoundSnapshot(room, reasonPid, reasonText);
   log(room, `🏁 ラウンド${room.round}終了：${reasonText}`);
   cpuTableTalk(room, reasonPid, 'roundEnd', {targetPid:reasonPid, target:room.players[reasonPid]?.name});
   if(room.round >= room.totalRounds){ room.phase='finished'; room.finalScores = score(room); room.message = `ゲーム終了！ 勝者：${room.finalScores.winners.join('、')}`; }
@@ -1128,7 +1155,7 @@ wss.on('connection', ws=>{
   ws.on('close', ()=>{
     const client=clients.get(ws); clients.delete(ws); if(!client?.roomCode) return;
     const room=rooms.get(client.roomCode); if(!room) return;
-    const p=room.players.find(p=>p.id===client.id); if(p){ p.connected=false; log(room, `${p.name} が切断しました。`); transferHostIfNeeded(room); broadcast(room); }
+    const p=room.players.find(p=>p.id===client.id); if(p){ p.connected=false; log(room, `${p.name} が切断しました。`); transferHostIfNeeded(room); broadcast(room); ensureProgress(room); }
   });
 });
 server.listen(PORT, ()=>console.log(`Pig Pick Trick server running on ${PORT}`));
