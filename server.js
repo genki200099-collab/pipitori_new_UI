@@ -36,7 +36,7 @@ const CPU_CHARACTERS = [
     motto:['締切厳守です','計画通りに進めましょう','リスクを洗い出します','想定外です、落ち着きましょう']
   },
 ];
-const HUMAN_ANIMAL_AVATARS = ['🐶','🐱','🐰','🐻','🐼','🐸','🐵','🦊','🐯','🐮','🐹','🐨','🦁','🐷','🐺','🐔'];
+const HUMAN_ANIMAL_AVATARS = ['🐶','🐱','🐰','🐻','🐼','🐸','🐵','🦊','🐯','🐮','🐹','🐨','🦁','🐺','🐔'];
 
 function pickHumanAvatar(room){
   if(!room) return '🐷';
@@ -176,7 +176,14 @@ function say(room, pid, text){
 }
 function clearGameplayTimers(room){
   if(!room || !room.timers) return;
-  for(const key of ['review','pickFinish','cpu','cpuPick','cpuPair']){
+  for(const key of ['review','pickFinish','cpu','cpuPick','cpuPair','delayedPick']){
+    if(room.timers[key]) clearTimeout(room.timers[key]);
+    room.timers[key] = null;
+  }
+}
+function clearPickTimers(room){
+  if(!room || !room.timers) return;
+  for(const key of ['pickFinish','cpuPick','cpuPair','delayedPick']){
     if(room.timers[key]) clearTimeout(room.timers[key]);
     room.timers[key] = null;
   }
@@ -258,6 +265,7 @@ function sanitizePendingPick(room, pid){
   const weakest = room.players[pp.weakestPid];
   const base = { winnerPid:pp.winnerPid, weakestPid:pp.weakestPid, winnerName:winner?.name || '', weakestName:weakest?.name || '', readyAt:pp.readyAt || 0 };
   if(pp.result){
+    if(pp.hideResult) return { ...base, mode:'finishingPick' };
     return { ...base, mode:'result', result:{...pp.result, drawn:publicCard(pp.result.drawn, room), pairCard:publicCard(pp.result.pairCard, room)} };
   }
   if(pp.pairChoice && pid === pp.winnerPid){
@@ -473,6 +481,7 @@ function advanceReviewToPick(room, reviewId){
   if(endPid >= 0){ endRound(room, endPid, roundEndReason(room, endPid)); broadcast(room); return; }
   const wp = room.players[winnerPid], lp = room.players[weakestPid];
   if(lp.hand.length > 0){
+    clearPickTimers(room);
     const targetCount = pickCandidateLimit(room, lp);
     const required = normalizePickTargetCount(room.pickTargetCount)>0 && targetCount < lp.hand.length;
     room.pendingPick = { winnerPid, weakestPid, readyAt:Date.now()+(required?999999999:900), result:null, token:uid('pick'), targetCount, targetSelectionRequired:required, targetSelectionDone:!required, targetCandidateIds: required?[]:null, pickOrderIds: required?[]:shuffleIds(lp.hand.map(c=>c.id)) };
@@ -542,7 +551,20 @@ function doPick(room, pid, index){
   const pp = room.pendingPick; if(!pp || pp.result || pp.pairChoice) return;
   if(pid !== pp.winnerPid) return;
   if(pp.targetSelectionRequired && !pp.targetSelectionDone) return;
-  if(Date.now() < (pp.readyAt || 0) - 120) return;
+  const waitMs = (pp.readyAt || 0) - Date.now() - 120;
+  if(waitMs > 0){
+    const token = pp.token;
+    const pickIndex = Number(index) || 0;
+    if(room.timers.delayedPick) clearTimeout(room.timers.delayedPick);
+    room.timers.delayedPick = setTimeout(()=>{
+      room.timers.delayedPick = null;
+      if(rooms.get(room.code)!==room || room.pendingPick?.token!==token) return;
+      doPick(room, pid, pickIndex);
+    }, Math.min(1200, Math.max(80, waitMs)));
+    room.message = '公開ピックの準備中です。もう少しで選べます。';
+    broadcast(room);
+    return;
+  }
   const wp = room.players[pp.winnerPid], lp = room.players[pp.weakestPid];
   const candidates = pickCandidateCards(room, pp);
   if(!candidates.length){
@@ -578,22 +600,25 @@ function doPick(room, pid, index){
       room.message = `${wp.name} は ${drawn.rank} のペア浄化を選べます。`;
       broadcast(room);
     }
-  } else completePickWithoutPair(room, pp, drawn);
+  } else completePickWithoutPair(room, pp, drawn, {hideResult:true});
   ensureProgress(room);
 }
-function completePickWithoutPair(room, pp, drawn){
+function completePickWithoutPair(room, pp, drawn, opts={}){
   const wp = room.players[pp.winnerPid];
+  const hideResult = !!opts.hideResult;
   const text = drawn.joker ? `${wp.name} はババブタを引いた！` : `${wp.name} は ${cardText(drawn, room)} を手札に加えた。`;
-  pp.result = { drawn, paired:false, skipped:true, text }; pp.resultAt=Date.now(); pp.pairChoice=null;
+  pp.result = { drawn, paired:false, skipped:true, text }; pp.resultAt=Date.now(); pp.pairChoice=null; pp.hideResult=hideResult;
   if(wp.cpu) say(room, pp.winnerPid, resultLine(drawn,false,room,pp.winnerPid,{winnerName:wp.name}));
   else cpuTableTalk(room, -1, drawn.joker ? 'resultJoker' : 'resultNormal', {drawn, winnerName:wp.name, target:wp.name});
-  room.message = text; broadcast(room);
-  schedulePickFinish(room, pp, drawn.joker?4300:2600);
+  room.message = hideResult ? `${wp.name} がカードを手札に加えました。次のトリックへ進みます。` : text;
+  if(hideResult) log(room, `ℹ️ ピック結果は公開情報と重複するため省略しました。`);
+  broadcast(room);
+  schedulePickFinish(room, pp, drawn.joker?5000:2600);
 }
 function completePickWithPair(room, pp, drawn, pairCard){
-  const wp = room.players[pp.winnerPid]; if(!pairCard) return completePickWithoutPair(room, pp, drawn);
+  const wp = room.players[pp.winnerPid]; if(!pairCard) return completePickWithoutPair(room, pp, drawn, {hideResult:false});
   const ids = new Set([drawn.id, pairCard.id]);
-  if(![...ids].every(id=>wp.hand.some(c=>c.id===id))) return completePickWithoutPair(room, pp, drawn);
+  if(![...ids].every(id=>wp.hand.some(c=>c.id===id))) return completePickWithoutPair(room, pp, drawn, {hideResult:false});
   const paired = wp.hand.filter(c=>ids.has(c.id));
   wp.hand = wp.hand.filter(c=>!ids.has(c.id)); wp.pairs.push(...paired); sortHand(wp.hand);
   const text = `${wp.name} は ${drawn.rank} のおそろいペアを浄化！`;
@@ -605,22 +630,31 @@ function completePickWithPair(room, pp, drawn, pairCard){
 }
 function choosePair(room, pid, cardId, skip=false){
   const pp=room.pendingPick; if(!pp || !pp.pairChoice || pid!==pp.winnerPid) return;
-  if(skip){ completePickWithoutPair(room, pp, pp.pairChoice.drawn); return; }
+  if(skip){ completePickWithoutPair(room, pp, pp.pairChoice.drawn, {hideResult:false}); return; }
   const pairCard = pp.pairChoice.candidates.find(c=>c.id===cardId); if(!pairCard){ room.message='ペアにするカードを選ぶか、スキップしてください。'; broadcast(room); return; }
   completePickWithPair(room, pp, pp.pairChoice.drawn, pairCard);
 }
 function schedulePickFinish(room, pp, delay){
-  clearTimeout(room.timers.pickFinish);
+  if(!room || !pp) return;
+  if(room.timers.pickFinish) clearTimeout(room.timers.pickFinish);
+  if(!Number.isFinite(Number(pp.resultAt))) pp.resultAt = Date.now();
   const token = pp.token;
-  room.timers.pickFinish = setTimeout(()=>{ if(rooms.get(room.code)===room && room.pendingPick?.token===token) finishAfterPick(room, pp.winnerPid); }, delay);
+  const safeDelay = clamp(Number(delay ?? 2600), 250, 9000);
+  room.timers.pickFinish = setTimeout(()=>{
+    room.timers.pickFinish = null;
+    if(rooms.get(room.code)===room && room.pendingPick?.token===token) finishAfterPick(room, pp.winnerPid);
+  }, safeDelay);
+  room.timers.pickFinish.unref?.();
 }
 function finishAfterPick(room, winnerPid){
   if(room.phase !== 'playing') return;
+  clearPickTimers(room);
+  if(!room.players[winnerPid]) winnerPid = room.players.findIndex(p=>p.hand?.length>0) >= 0 ? room.players.findIndex(p=>p.hand?.length>0) : 0;
   room.pendingPick = null; room.trick = []; room.leadSuit = null; room.lead = winnerPid; room.current = winnerPid; room.trickNo++;
   const endPid = findRoundEndPid(room);
   if(endPid >= 0){ endRound(room, endPid, roundEndReason(room, endPid)); broadcast(room); return; }
   if(maybeEndAtTurnStart(room)){ broadcast(room); return; }
-  room.message = `次のリード：${room.players[winnerPid].name}`;
+  room.message = `次のリード：${room.players[winnerPid]?.name || 'プレイヤー'}`;
   broadcast(room); ensureProgress(room);
 }
 function maybeEndAtTurnStart(room){
@@ -1044,6 +1078,14 @@ function ensureProgress(room){
   if(room.phase!=='playing') return;
   if(maybeEndAtTurnStart(room)){ broadcast(room); return; }
   if(room.pendingPick){
+    const pp = room.pendingPick;
+    if(pp.result){
+      const resultAt = Number(pp.resultAt || 0);
+      const elapsed = Date.now() - resultAt;
+      const limit = pp.hideResult ? 2800 : 6500;
+      if(resultAt <= 0 || elapsed > limit || !room.timers.pickFinish){ finishAfterPick(room, pp.winnerPid); }
+      return;
+    }
     if(room.pendingPick.targetSelectionRequired && !room.pendingPick.targetSelectionDone){ autoResolveCpuPickTargets(room); return; }
     if(room.pendingPick.pairChoice && room.players[room.pendingPick.winnerPid]?.cpu){
       const pp = room.pendingPick;
@@ -1088,6 +1130,25 @@ function ensureCpuPick(room){
     const candidates=pickCandidateCards(room,room.pendingPick);
     doPick(room, room.pendingPick.winnerPid, chooseCpuPickIndex(room, room.pendingPick, candidates));
   }, delay);
+}
+function watchdogRooms(){
+  const now = Date.now();
+  for(const room of rooms.values()){
+    if(!room || room.phase !== 'playing') continue;
+    if(room.trickReview && now >= Number(room.trickReview.until || 0) + 250){
+      advanceReviewToPick(room, room.trickReview.id);
+      continue;
+    }
+    if(room.pendingPick?.result){
+      const resultAt = Number(room.pendingPick.resultAt || 0);
+      const limit = room.pendingPick.hideResult ? 2800 : 6500;
+      if(resultAt <= 0 || now - resultAt > limit || !room.timers.pickFinish){
+        finishAfterPick(room, room.pendingPick.winnerPid);
+        continue;
+      }
+    }
+    ensureProgress(room);
+  }
 }
 
 function handleMessage(ws, raw){
@@ -1134,7 +1195,9 @@ function handleMessage(ws, raw){
 
 function serveStatic(req, res){
   const url = new URL(req.url, `http://${req.headers.host}`);
-  let pathname = decodeURIComponent(url.pathname);
+  let pathname;
+  try { pathname = decodeURIComponent(url.pathname); }
+  catch { res.writeHead(400); res.end('Bad request'); return; }
   if(pathname === '/') pathname = '/index.html';
   const filePath = path.resolve(PUBLIC_DIR, '.' + pathname);
   const publicRoot = path.resolve(PUBLIC_DIR);
@@ -1148,6 +1211,8 @@ function serveStatic(req, res){
 }
 const server = http.createServer(serveStatic);
 const wss = new WebSocket.Server({ server });
+const roomWatchdog = setInterval(watchdogRooms, 1000);
+roomWatchdog.unref?.();
 wss.on('connection', ws=>{
   const id=uid('u'); clients.set(ws,{id,name:'Player',roomCode:null});
   send(ws,{type:'hello', id});
