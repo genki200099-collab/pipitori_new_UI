@@ -360,10 +360,12 @@ function startGame(room){
 }
 function autoCpuPass(room){
   for(const [i,p] of room.players.entries()){
-    if(!p.cpu || Array.isArray(p.passSelection)) continue;
+    const shouldAuto = p.cpu || (!p.connected && !Array.isArray(p.passSelection));
+    if(!shouldAuto || Array.isArray(p.passSelection)) continue;
     const cards = p.hand.filter(c=>!c.joker).map(c=>({c,score:cpuUnwantedValue(room,p,c)+Math.random()})).sort((a,b)=>b.score-a.score).slice(0,3).map(x=>x.c.id);
     p.passSelection = cards;
-    say(room, i, cpuLineFor(room, i, 'passSelect', {targetPid:(i+1)%4, target:room.players[(i+1)%4]?.name}));
+    if(p.cpu) say(room, i, cpuLineFor(room, i, 'passSelect', {targetPid:(i+1)%4, target:room.players[(i+1)%4]?.name}));
+    else log(room, `⚠️ ${p.name} は切断中のため、3枚パスを自動選択しました。`);
   }
   maybeFinishPassPhase(room);
 }
@@ -391,7 +393,8 @@ function maybeFinishPassPhase(room){
 }
 function autoCpuInitialPairs(room){
   for(const [pid,p] of room.players.entries()){
-    if(!p.cpu || p.initialPairDone) continue;
+    const shouldAuto = p.cpu || (!p.connected && !p.initialPairDone);
+    if(!shouldAuto || p.initialPairDone) continue;
     let did = 0;
     while(true){
       const pairs = pairOptionsFor(p, room);
@@ -409,8 +412,11 @@ function autoCpuInitialPairs(room){
       p.pairs.push(...best); did++;
     }
     p.initialPairDone = true; sortHand(p.hand);
-    if(did) say(room,pid,`${cpuLineFor(room, pid, 'initialPair')}（${did}ペア）`);
-    else say(room,pid,cpuLineFor(room, pid, 'opening'));
+    if(p.cpu){
+      if(did) say(room,pid,`${cpuLineFor(room, pid, 'initialPair')}（${did}ペア）`);
+      else say(room,pid,cpuLineFor(room, pid, 'opening'));
+    } else log(room, `⚠️ ${p.name} は切断中のため、開始時ペア捨てを自動処理しました。`);
+
   }
   maybeFinishInitialPairPhase(room);
 }
@@ -531,7 +537,13 @@ function submitPickTargets(room, pid, ids){
 }
 function autoResolveCpuPickTargets(room){
   const pp = room.pendingPick; if(!pp || !pp.targetSelectionRequired || pp.targetSelectionDone) return;
-  const lp = room.players[pp.weakestPid]; if(!lp?.cpu) return;
+  const lp = room.players[pp.weakestPid]; if(!lp) return;
+  const shouldAuto = lp.cpu || !lp.connected;
+  if(!shouldAuto) return;
+  if(!lp.cpu && !pp.autoTargetByDisconnectLogged){
+    pp.autoTargetByDisconnectLogged = true;
+    log(room, `⚠️ ${lp.name} は切断中のため、ピック候補を自動選択しました。`);
+  }
   const ids = chooseCpuPickTargetIds(room, pp.weakestPid, pp.targetCount);
   submitPickTargets(room, pp.weakestPid, ids);
 }
@@ -772,7 +784,7 @@ function endRound(room, reasonPid, reasonText){
 function continueRound(room){
   if(room.phase !== 'roundEnd') return;
   clearGameplayTimers(room);
-  room.round++; room.trickNo = 1; room.roundSnapshot = null; room.trick=[]; room.leadSuit=null; room.pendingPick=null; room.trickReview=null; room.endAfterTrickPid=null;
+  room.round++; room.trickNo = 1; room.roundSnapshot = null; room.trick=[]; room.leadSuit=null; room.pendingPick=null; room.trickReview=null; room.endAfterTrickPid=null; room.lastPickReveal=null; room.shootEvent=null;
   refillHands(room);
   room.lead = Number.isInteger(room.nextLead) ? room.nextLead : 0; room.current = room.lead; room.phase='playing'; room.message = `ラウンド${room.round}開始。${room.players[room.current].name} のリードです。`;
   log(room, `ラウンド${room.round}開始。残り手札を持ち越し、通常カードで13枚まで補充しました。`);
@@ -1087,18 +1099,26 @@ function ensureProgress(room){
       return;
     }
     if(room.pendingPick.targetSelectionRequired && !room.pendingPick.targetSelectionDone){ autoResolveCpuPickTargets(room); return; }
-    if(room.pendingPick.pairChoice && room.players[room.pendingPick.winnerPid]?.cpu){
+    if(room.pendingPick.pairChoice){
       const pp = room.pendingPick;
-      if(!room.timers.cpuPair){
+      const winner = room.players[pp.winnerPid];
+      const shouldAutoPair = winner?.cpu || !winner?.connected;
+      if(shouldAutoPair && !room.timers.cpuPair){
         const token = pp.token;
         room.timers.cpuPair = setTimeout(()=>{
           room.timers.cpuPair = null;
           if(rooms.get(room.code)!==room || room.pendingPick?.token!==token || !room.pendingPick?.pairChoice) return;
           const current = room.pendingPick;
-          const winner = room.players[current.winnerPid];
-          const pick = chooseCpuPairCardForDiscard(room, winner, current.pairChoice.drawn, current.pairChoice.candidates);
+          const winnerNow = room.players[current.winnerPid];
+          const shouldAutoPairNow = winnerNow?.cpu || !winnerNow?.connected;
+          if(!shouldAutoPairNow) return;
+          if(!winnerNow?.cpu && !winnerNow?.connected && !current.autoPairByDisconnectLogged){
+            current.autoPairByDisconnectLogged = true;
+            log(room, `⚠️ ${winnerNow?.name || 'プレイヤー'} は切断中のため、ペア浄化を自動処理しました。`);
+          }
+          const pick = chooseCpuPairCardForDiscard(room, winnerNow, current.pairChoice.drawn, current.pairChoice.candidates);
           choosePair(room, current.winnerPid, pick?.id, false);
-        }, 700);
+        }, winner?.cpu ? 700 : 1800);
       }
       return;
     }
@@ -1108,27 +1128,46 @@ function ensureProgress(room){
 }
 function ensureCpuTurn(room){
   if(room.phase!=='playing' || room.pendingPick || room.trickReview) return;
-  const p=room.players[room.current]; if(!p?.cpu) return;
+  const p=room.players[room.current]; if(!p) return;
+  const shouldAuto = p.cpu || !p.connected;
+  if(!shouldAuto) return;
   if(room.timers.cpu) return;
   room.timers.cpu = setTimeout(()=>{
     room.timers.cpu=null;
     if(rooms.get(room.code)!==room || room.phase!=='playing' || room.pendingPick || room.trickReview) return;
-    const pid=room.current, card=chooseCpuCard(room,pid);
-    if(card) playCard(room,pid,card.id); else { if(maybeEndAtTurnStart(room)) broadcast(room); }
-  }, 900 + Math.random()*700);
+    const pid=room.current, player=room.players[pid];
+    if(!player) return;
+    const shouldAutoNow = player.cpu || !player.connected;
+    if(!shouldAutoNow) return;
+    const card=chooseCpuCard(room,pid);
+    if(card){
+      if(!player.cpu && !player.connected) log(room, `⚠️ ${player.name} は切断中のため、カードを自動で出しました。`);
+      playCard(room,pid,card.id);
+    } else { if(maybeEndAtTurnStart(room)) broadcast(room); }
+  }, p.cpu ? (900 + Math.random()*700) : 1800);
 }
 function ensureCpuPick(room){
   const pp=room.pendingPick; if(!pp || pp.result || pp.pairChoice) return;
   if(pp.targetSelectionRequired && !pp.targetSelectionDone) return;
-  const winner=room.players[pp.winnerPid]; if(!winner?.cpu) return;
+  const winner=room.players[pp.winnerPid]; if(!winner) return;
+  const shouldAutoPick = winner.cpu || !winner.connected;
+  if(!shouldAutoPick) return;
   if(room.timers.cpuPick) return;
-  const delay = Math.max(400, (pp.readyAt||0)-Date.now()+450);
+  const delay = Math.max(winner.cpu ? 400 : 1300, (pp.readyAt||0)-Date.now()+450);
   const token = pp.token;
   room.timers.cpuPick = setTimeout(()=>{
     room.timers.cpuPick=null;
     if(rooms.get(room.code)!==room || !room.pendingPick || room.pendingPick.token!==token || room.pendingPick.result || room.pendingPick.pairChoice) return;
-    const candidates=pickCandidateCards(room,room.pendingPick);
-    doPick(room, room.pendingPick.winnerPid, chooseCpuPickIndex(room, room.pendingPick, candidates));
+    const current = room.pendingPick;
+    const winnerNow = room.players[current.winnerPid];
+    const shouldAutoPickNow = winnerNow?.cpu || !winnerNow?.connected;
+    if(!shouldAutoPickNow) return;
+    if(!winnerNow?.cpu && !winnerNow?.connected && !current.autoPickByDisconnectLogged){
+      current.autoPickByDisconnectLogged = true;
+      log(room, `⚠️ ${winnerNow?.name || 'プレイヤー'} は切断中のため、ピックを自動処理しました。`);
+    }
+    const candidates=pickCandidateCards(room,current);
+    doPick(room, current.winnerPid, chooseCpuPickIndex(room, current, candidates));
   }, delay);
 }
 function watchdogRooms(){
